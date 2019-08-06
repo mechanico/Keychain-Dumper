@@ -139,6 +139,7 @@ void printUsage()
 	printToStdOut(@"-c: Dump Certificates\n");
 	printToStdOut(@"-k: Dump Keys\n");
 	printToStdOut(@"-s: Dump Selected Entitlement Group\n");
+	printToStdOut(@"-d: Delete Selected Entitlement Groups KeyChain Items\n");
 }
 
 void dumpKeychainEntitlements()
@@ -233,6 +234,48 @@ NSString *listEntitlements()
 	return selectedEntitlement;
 }
 
+NSString *deleteKeyChainItems()
+{
+	int securityNumber;
+	printToStdOut(@"%s[ACTION] Type 1337 if you really want to delete all KeyChain Items from %@: %s", KGRN, selectedEntitlementConstant, KWHT);
+	scanf("%i", &securityNumber);
+	if (securityNumber != 1337)
+	{
+		printToStdOut(@"[INFO] Wrong Security Number, shutting down the tool.\n");
+		exit(0);
+	}
+	NSMutableArray *entitlementsArray = [[NSMutableArray alloc] init];
+    const char *dbpath = [databasePath UTF8String];
+    sqlite3 *keychainDB;
+    sqlite3_stmt *statement;
+    if (sqlite3_open(dbpath, &keychainDB) == SQLITE_OK)
+    {
+    	NSString *deleteGenp = [NSString stringWithFormat:@"DELETE from genp where agrp = '%@'", selectedEntitlementConstant];
+    	NSString *deleteInet = [NSString stringWithFormat:@"DELETE from inet where agrp = '%@'", selectedEntitlementConstant];
+    	NSString *deleteKeys = [NSString stringWithFormat:@"DELETE from keys where agrp = '%@'", selectedEntitlementConstant];
+    	NSString *deleteAll = [NSString stringWithFormat:@"%@;%@;%@;", deleteGenp, deleteInet, deleteKeys];
+        const char *delete_all = [deleteAll cStringUsingEncoding:NSASCIIStringEncoding];;
+        if (sqlite3_prepare_v2(keychainDB, delete_all, -1, &statement, NULL) == SQLITE_OK)
+        {	
+        	sqlite3_step(statement);
+        	printToStdOut(@"%s[INFO] Deleted the selected KeyChain Items\n%s", KGRN, KWHT);
+            sqlite3_finalize(statement);
+        }
+        else
+        {
+            printToStdOut(@"%s[ERROR] Unknown error querying keychain database\n%s", KRED, KWHT);
+            return @"none";
+		}
+		sqlite3_close(keychainDB);
+		exit(0);
+	}
+	else
+	{	
+		printToStdOut(@"%s[ERROR] Unknown error opening keychain database\n%s", KRED, KWHT);
+		return @"none";
+	}
+}
+
 NSMutableArray *getCommandLineOptions(int argc, char **argv)
 {
     NSMutableArray *arguments = [[NSMutableArray alloc] init];
@@ -243,7 +286,7 @@ NSMutableArray *getCommandLineOptions(int argc, char **argv)
 		[arguments addObject:(id)kSecClassInternetPassword];
 		return [arguments autorelease];
 	}
-	while ((argument = getopt (argc, argv, "aegnickhs")) != -1)
+	while ((argument = getopt (argc, argv, "aegnickhsd")) != -1)
     {
         switch(argument)
         {	
@@ -255,6 +298,9 @@ NSMutableArray *getCommandLineOptions(int argc, char **argv)
 				[arguments addObject:(id)kSecClassCertificate];
 				[arguments addObject:(id)kSecClassKey];
 				return [arguments autorelease];
+			case 'd':
+				selectedEntitlementConstant = listEntitlements();
+				deleteKeyChainItems();
             case 'a':
                 [arguments addObject:(id)kSecClassGenericPassword];
 				[arguments addObject:(id)kSecClassInternetPassword];
@@ -362,6 +408,8 @@ void printGenericPassword(NSDictionary *passwordItem)
 {
     printToStdOut(@"Generic Password\n");
 	printToStdOut(@"----------------\n");
+	//printToStdOut(@"ItemBlob: %@\n", passwordItem); //Debugging purposes
+	printToStdOut(@"Accessible Attribute: %@\n", [passwordItem objectForKey:(id)kSecAttrAccessControl]);
 	printToStdOut(@"Service: %@\n", [passwordItem objectForKey:(id)kSecAttrService]);
 	printToStdOut(@"Account: %@\n", [passwordItem objectForKey:(id)kSecAttrAccount]);
 	printToStdOut(@"Entitlement Group: %@\n", [passwordItem objectForKey:(id)kSecAttrAccessGroup]);
