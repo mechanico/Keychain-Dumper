@@ -28,6 +28,7 @@ By default keychain_dumper only dumps "Generic" and "Internet" passwords.  This 
     -i: Dump Identities
     -c: Dump Certificates
     -k: Dump Keys
+    -d: Delete Selected Entitlement Groups KeyChain Items
 
 By default passing no option flags is equivalent to running keychain_dumper with the `-gn` flags set.  The other flags largely allow you to dump additional information related to certificates that are installed on the device.
 
