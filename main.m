@@ -253,12 +253,35 @@ NSString *deleteKeyChainItems()
     	NSString *deleteGenp = [NSString stringWithFormat:@"DELETE from genp where agrp = '%@'", selectedEntitlementConstant];
     	NSString *deleteInet = [NSString stringWithFormat:@"DELETE from inet where agrp = '%@'", selectedEntitlementConstant];
     	NSString *deleteKeys = [NSString stringWithFormat:@"DELETE from keys where agrp = '%@'", selectedEntitlementConstant];
-    	NSString *deleteAll = [NSString stringWithFormat:@"%@;%@;%@;", deleteGenp, deleteInet, deleteKeys];
-        const char *delete_all = [deleteAll cStringUsingEncoding:NSASCIIStringEncoding];;
-        if (sqlite3_prepare_v2(keychainDB, delete_all, -1, &statement, NULL) == SQLITE_OK)
+        const char *delete_genp = [deleteGenp cStringUsingEncoding:NSASCIIStringEncoding];
+        const char *delete_inet = [deleteInet cStringUsingEncoding:NSASCIIStringEncoding];
+        const char *delete_keys = [deleteKeys cStringUsingEncoding:NSASCIIStringEncoding];
+        if (sqlite3_prepare_v2(keychainDB, delete_genp, -1, &statement, NULL) == SQLITE_OK)
         {	
         	sqlite3_step(statement);
-        	printToStdOut(@"%s[INFO] Deleted the selected KeyChain Items\n%s", KGRN, KWHT);
+        	printToStdOut(@"%s[INFO] Deleted the selected genp KeyChain Items\n%s", KGRN, KWHT);
+            sqlite3_finalize(statement);
+        }
+        else
+        {
+            printToStdOut(@"%s[ERROR] Unknown error querying keychain database\n%s", KRED, KWHT);
+            return @"none";
+		}
+		if (sqlite3_prepare_v2(keychainDB, delete_inet, -1, &statement, NULL) == SQLITE_OK)
+        {	
+        	sqlite3_step(statement);
+        	printToStdOut(@"%s[INFO] Deleted the selected inet KeyChain Items\n%s", KGRN, KWHT);
+            sqlite3_finalize(statement);
+        }
+        else
+        {
+            printToStdOut(@"%s[ERROR] Unknown error querying keychain database\n%s", KRED, KWHT);
+            return @"none";
+		}
+		if (sqlite3_prepare_v2(keychainDB, delete_keys, -1, &statement, NULL) == SQLITE_OK)
+        {	
+        	sqlite3_step(statement);
+        	printToStdOut(@"%s[INFO] Deleted the selected keys KeyChain Items\n%s", KGRN, KWHT);
             sqlite3_finalize(statement);
         }
         else
@@ -409,7 +432,8 @@ void printGenericPassword(NSDictionary *passwordItem)
     printToStdOut(@"Generic Password\n");
 	printToStdOut(@"----------------\n");
 	//printToStdOut(@"ItemBlob: %@\n", passwordItem); //Debugging purposes
-	printToStdOut(@"Accessible Attribute: %@\n", [passwordItem objectForKey:(id)kSecAttrAccessControl]);
+	NSData* accessControl = [passwordItem objectForKey:(id)kSecAttrAccessControl]; //not tested
+	printToStdOut(@"Accessible Attribute: %@\n", [[NSString alloc] initWithData:accessControl encoding:NSUTF8StringEncoding]); //not tested
 	printToStdOut(@"Service: %@\n", [passwordItem objectForKey:(id)kSecAttrService]);
 	printToStdOut(@"Account: %@\n", [passwordItem objectForKey:(id)kSecAttrAccount]);
 	printToStdOut(@"Entitlement Group: %@\n", [passwordItem objectForKey:(id)kSecAttrAccessGroup]);
